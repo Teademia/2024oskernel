@@ -1,0 +1,1 @@
+sudo qemu-riscv64 -g 1234 user_apps/write
