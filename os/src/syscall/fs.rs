@@ -1,7 +1,10 @@
 //! File and filesystem-related syscalls
 use core::ptr::drop_in_place;
+use core::slice;
+use core::str;
 
 use alloc::string::String;
+use alloc::string::ToString;
 use alloc::vec;
 use alloc::vec::Vec;
 use fat32_fs::sync_all;
@@ -110,10 +113,34 @@ pub fn sys_getcwd(buf: *mut u8, len: usize) -> isize {
     let task = current_task().unwrap();
     let token = current_user_token();
     let inner = task.inner_exclusive_access();
-    let mut buffer = [0u8; 64];
-    for (i, &byte) in inner.cwd.as_bytes().iter().enumerate() {
-        buffer[i] = byte;
+
+    if (buf != core::ptr::null_mut()) {
+        let cwd_bytes = inner.cwd.as_bytes();
+        let mut buffer = Vec::with_capacity(cwd_bytes.len());
+        for &byte in cwd_bytes {
+            buffer.push(byte);
+        }
+        let buffer_ptr = buffer.as_mut_ptr();
+        for i in 0..cwd_bytes.len() {
+            unsafe {
+                *translated_refmut(token, buf.add(i)) = cwd_bytes[i];
+            }
+        }
+    } else {
+        return 0;
     }
-    *translated_refmut(token, buf as *mut [u8; 64]) = buffer;
     buf as isize
+}
+
+pub fn sys_mkdir() -> isize {
+    0
+}
+
+pub fn sys_chdir(path: *const u8) -> isize {
+    let task = current_task().unwrap();
+    let token = current_user_token();
+    let mut inner = task.inner_exclusive_access();
+    inner.cwd = translated_str(token, path);
+    info!("{}", inner.cwd);
+    0
 }

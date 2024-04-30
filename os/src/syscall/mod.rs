@@ -27,6 +27,8 @@ const SYSCALL_OPEN: usize = 56;
 const SYSCALL_CLOSE: usize = 57;
 const SYSCALL_PIPE: usize = 59;
 const SYSCALL_GETCWD: usize = 17;
+const SYSCALL_CHDIR: usize = 49;
+const SYSCALL_MKDIR: usize = 34;
 
 mod fs;
 mod process;
@@ -49,6 +51,8 @@ pub fn syscall(syscall_id: usize, args: [usize; 3]) -> isize {
         SYSCALL_CLOSE => sys_close(args[0]),
         SYSCALL_PIPE => sys_pipe(args[0] as *mut usize),
         SYSCALL_GETCWD => sys_getcwd(args[0] as *mut u8, args[1]),
+        SYSCALL_CHDIR => sys_chdir(args[0] as *const u8),
+        SYSCALL_MKDIR => sys_mkdir(),
         _ => panic!("Unsupported syscall_id: {}", syscall_id),
     }
 }

@@ -112,7 +112,7 @@ lazy_static! {
     ///Globle process that init user shell
     pub static ref INITPROC: Arc<TaskControlBlock> = Arc::new(TaskControlBlock::new(
         unsafe{
-            fat::ROOT_INODE.find_inode("pipe").unwrap().read_as_elf()
+            fat::ROOT_INODE.find_inode("chdir").unwrap().read_as_elf()
         }
     ));
 }

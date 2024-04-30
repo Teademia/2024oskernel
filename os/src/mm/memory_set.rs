@@ -52,6 +52,14 @@ impl MemorySet {
     pub fn token(&self) -> usize {
         self.page_table.token()
     }
+    pub fn show_area(&self) {
+        for area in &self.areas {
+            debug!(
+                "Area from {:x}",
+                VirtAddr::from(area.vpn_range.get_start()).0
+            );
+        }
+    }
     /// Assume that no conflicts.
     pub fn insert_framed_area(
         &mut self,
