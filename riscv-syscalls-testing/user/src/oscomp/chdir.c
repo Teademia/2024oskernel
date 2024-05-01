@@ -6,6 +6,7 @@ static char buffer[30];
 void test_chdir(void)
 {
     TEST_START(__func__);
+    mkdir("test_chdir", 0666);
     int ret = chdir("test_chdir");
     printf("chdir ret: %d\n", ret);
     assert(ret == 0);

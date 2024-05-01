@@ -8,6 +8,7 @@ use alloc::string::ToString;
 use alloc::vec;
 use alloc::vec::Vec;
 use fat32_fs::sync_all;
+use fat32_fs::ATTRIBUTE_ARCHIVE;
 
 use crate::fat::*;
 use crate::mm::*;
@@ -132,7 +133,38 @@ pub fn sys_getcwd(buf: *mut u8, len: usize) -> isize {
     buf as isize
 }
 
-pub fn sys_mkdir() -> isize {
+/*
+cmod
+第一位
+RDONLY 0x000
+WRONLY 0x001
+RDWR 0x002
+
+第二位
+CREATE 0x40
+
+第三位
+DIRECTORY 0x0200000
+DIR 0x040000
+FILE 0x100000
+*/
+pub fn sys_mkdir(dirfd: isize, path: *const u8, cmod: usize) -> isize {
+    info!("sysmkdir");
+    let task = current_task().unwrap();
+    let token = current_user_token();
+    let inner = task.inner_exclusive_access();
+    let cwd = inner.cwd.clone();
+    // let current_file = &inner.fd_table[dirfd].unwrap();
+    info!("Dir fd {}", dirfd);
+    if (dirfd == -100) {
+        let name = &translated_str(token, path);
+        ROOT_INODE.create(name, ATTRIBUTE_ARCHIVE);
+        sync_all();
+        let osinode = ROOT_INODE.find_inode(&name);
+        if let Some(osinode) = osinode {
+            info!("Create Inode Suceess");
+        }
+    }
     0
 }
 
@@ -140,7 +172,16 @@ pub fn sys_chdir(path: *const u8) -> isize {
     let task = current_task().unwrap();
     let token = current_user_token();
     let mut inner = task.inner_exclusive_access();
-    inner.cwd = translated_str(token, path);
-    info!("{}", inner.cwd);
+
+    let name = &translated_str(token, path);
+    let osinode = find_osinode_by_path(&name);
+    if let Some(osinode) = osinode {
+        debug!("Sys_chdir find node {}", &name);
+        inner.cwd = translated_str(token, path);
+        debug!("Sys_chdir switch chdir to {}", &inner.cwd);
+    } else {
+        debug!("Sys_chdir fail to find node {}", &inner.cwd);
+        return 1;
+    }
     0
 }

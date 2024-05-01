@@ -107,6 +107,11 @@ impl PageTable {
     }
     /// Find phsical address by virtual address
     fn find_pte(&self, vpn: VirtPageNum) -> Option<&mut PageTableEntry> {
+        /*
+        我们现在有一个4KB大小的页面,里面排满了64bit的页表项
+        所以一共有512个页表项,512x8B=4KB,
+        一个VPN的index用于索引三次页面,offset用来页面内定位
+         */
         let idxs = vpn.indexes();
         let mut ppn = self.root_ppn;
         let mut result: Option<&mut PageTableEntry> = None;

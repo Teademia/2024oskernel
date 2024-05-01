@@ -52,7 +52,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 3]) -> isize {
         SYSCALL_PIPE => sys_pipe(args[0] as *mut usize),
         SYSCALL_GETCWD => sys_getcwd(args[0] as *mut u8, args[1]),
         SYSCALL_CHDIR => sys_chdir(args[0] as *const u8),
-        SYSCALL_MKDIR => sys_mkdir(),
+        SYSCALL_MKDIR => sys_mkdir(args[0] as isize, args[1] as *const u8, args[2]),
         _ => panic!("Unsupported syscall_id: {}", syscall_id),
     }
 }
