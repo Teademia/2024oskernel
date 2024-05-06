@@ -38,6 +38,7 @@ pub fn kernel_token() -> usize {
 pub struct MemorySet {
     page_table: PageTable,
     areas: Vec<MapArea>,
+    brk: usize,
 }
 
 impl MemorySet {
@@ -46,6 +47,7 @@ impl MemorySet {
         Self {
             page_table: PageTable::new(),
             areas: Vec::new(),
+            brk: 0,
         }
     }
     ///Get pagetable `root_ppn`
@@ -59,6 +61,45 @@ impl MemorySet {
                 VirtAddr::from(area.vpn_range.get_start()).0
             );
         }
+    }
+    pub fn get_max_page(&self) -> usize {
+        let mut max_page: VirtPageNum = VirtPageNum::from(0);
+        for area in &self.areas {
+            // warn!(
+            //     "area from {:x} to {:x}",
+            //     usize::from(area.vpn_range.get_start()),
+            //     usize::from(area.vpn_range.get_end())
+            // );
+            if (area.vpn_range.get_end().0 > max_page.0
+                && usize::from(area.vpn_range.get_end()) != 0x7ffffff)
+            {
+                max_page.0 = area.vpn_range.get_end().0
+            }
+        }
+        return max_page.0 * 0x1000;
+    }
+    pub fn get_brk(&self) -> usize {
+        self.brk
+    }
+    pub fn inc_brk(&mut self, virt_addr: usize) -> usize {
+        if (virt_addr > self.brk) {
+            if (virt_addr > self.get_max_page()) {
+                let new_area = MapArea::new(
+                    self.brk.into(),
+                    (virt_addr).into(),
+                    MapType::Identical,
+                    MapPermission::R | MapPermission::W,
+                );
+                self.brk = virt_addr;
+                self.push(new_area, None)
+            } else {
+                self.brk = virt_addr;
+            }
+        }
+        0
+    }
+    pub fn init_brk(&mut self) {
+        self.brk = self.get_max_page();
     }
     /// Assume that no conflicts.
     pub fn insert_framed_area(
@@ -84,7 +125,7 @@ impl MemorySet {
             self.areas.remove(idx);
         }
     }
-    fn push(&mut self, mut map_area: MapArea, data: Option<&[u8]>) {
+    pub fn push(&mut self, mut map_area: MapArea, data: Option<&[u8]>) {
         map_area.map(&mut self.page_table);
         if let Some(data) = data {
             map_area.copy_data(&mut self.page_table, data);
@@ -191,6 +232,12 @@ impl MemorySet {
         let mut max_end_vpn = VirtPageNum(0);
         for i in 0..ph_count {
             let ph = elf.program_header(i).unwrap();
+            info!("{}", ph);
+            info!(
+                "Start Addr at 0x{:x} to 0x{:x}",
+                ph.virtual_addr(),
+                ph.virtual_addr() + ph.mem_size()
+            );
             if ph.get_type().unwrap() == xmas_elf::program::Type::Load {
                 let start_va: VirtAddr = (ph.virtual_addr() as usize).into();
                 let end_va: VirtAddr = ((ph.virtual_addr() + ph.mem_size()) as usize).into();
@@ -238,6 +285,7 @@ impl MemorySet {
             ),
             None,
         );
+        memory_set.init_brk();
         (
             memory_set,
             user_stack_top,
